@@ -92,4 +92,24 @@ config.vm.define "server1" do |server1|
 #  server1.vm.hostname = "server1.eight.example.com"
   server1.vm.network "private_network", ip: "192.168.56.150"
   server1.vm.provider :virtualbox do |server1|
-    serv
+    server1.customize ['modifyvm', :id,'--memory', '2048']
+  end
+  server1.vm.provision "shell", inline: <<-SHELL
+  cd /etc/yum.repos.d; sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*;sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*; yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm -y; sudo yum install -y sshpass python3 python3-devel; 
+  SHELL
+  server1.vm.provision "shell", inline: <<-SHELL
+  python3 -m pip install -U pip; pip3 install ansible #; ssh-keygen -q -t rsa -N '' -f /home/vagrant/.ssh/id_rsa <<<y >/dev/null 2>&1; cp /home/vagrant/.ssh/id_rsa.pub /home/vagrant/.ssh/authorized_keys
+  SHELL
+   
+
+  server1.vm.provision :ansible_local do |ansible|
+    ansible.playbook = "/vagrant/playbooks/master.yml"
+    ansible.install = false
+    ansible.compatibility_mode = "2.0"
+    ansible.inventory_path = "/vagrant/inventory"
+    ansible.config_file = "/vagrant/ansible.cfg"
+    ansible.limit = "all"
+   end
+   server1.vm.provision :shell, :inline => "reboot", run: "always"
+  end
+end
